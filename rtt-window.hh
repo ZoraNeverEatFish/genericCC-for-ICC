@@ -1,3 +1,7 @@
+#ifndef rttwindow_HH
+#define rttwindow_HH
+
+
 #include <deque>
 #include <tuple>
 
@@ -37,6 +41,8 @@ class RTTWindow {
   ExtremeWindow unjittered_rtt;
   ExtremeWindow is_copa_min;
   ExtremeWindow is_copa_max;
+  
+  bool if_compete;
 
  public:
   RTTWindow();
@@ -46,5 +52,10 @@ class RTTWindow {
   double get_min_rtt() const;
   double get_unjittered_rtt() const;
   double get_latest_rtt() const;
+  double get_srtt() const;
   bool is_copa() const;
+  
+  void change_window(bool IC);
+  
 };
+#endif

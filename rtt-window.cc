@@ -64,11 +64,13 @@ RTTWindow::RTTWindow()
     min_rtt(true),
     unjittered_rtt(true),
     is_copa_min(true),
-    is_copa_max(false)
+    is_copa_max(false),
+	if_compete(false)
 {}
 
 void RTTWindow::clear() {
   srtt = 0.;
+  if_compete = false;
   min_rtt.clear();
   unjittered_rtt.clear();
   is_copa_min.clear();
@@ -83,7 +85,9 @@ void RTTWindow::new_rtt_sample(double rtt, double now) {
   latest_rtt = rtt;
 
   // Update extreme value trackers
-  double max_time = max(10e3, 20. * min_rtt);
+  double max_time;
+  if(!if_compete) max_time = max(10e3, 100. * min_rtt);// 20*min_rtt -> 100*min_rtt
+  else max_time = srtt;
   min_rtt.update_max_time(max_time);
   unjittered_rtt.update_max_time(min(max_time, srtt * 0.5));
   is_copa_min.update_max_time(min(max_time, srtt * 4));
@@ -99,6 +103,10 @@ double RTTWindow::get_min_rtt() const {
   return min_rtt;
 }
 
+double RTTWindow::get_srtt() const {
+  return srtt;
+}
+
 double RTTWindow::get_unjittered_rtt() const {
   return unjittered_rtt;
 }
@@ -110,4 +118,9 @@ double RTTWindow::get_latest_rtt() const {
 bool RTTWindow::is_copa() const {
   double threshold = min_rtt + 0.1 * (is_copa_max - min_rtt);
   return is_copa_min < threshold;
+}
+
+void RTTWindow::change_window(bool IC)
+{
+	if_compete=IC;
 }

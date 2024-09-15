@@ -197,7 +197,7 @@ void MarkovianCC::update_intersend_time() {
     }
   }
 
-  //cout << "time= " << cur_time << " window= " << _the_window << " target= " << target_window << " rtt= " << rtt << " min_rtt= " << min_rtt << " delta= " << delta << " update_amt= " << update_amt << endl;
+  cout << "time= " << cur_time << " window= " << _the_window << " target= " << target_window << " rtt= " << rtt << " min_rtt= " << min_rtt << " delta= " << delta << " update_amt= " << update_amt << endl;
   // Set intersend time and perform boundary checks.
   _the_window = max(2.0, _the_window);
   cur_intersend_time = 0.5 * rtt / _the_window;
@@ -230,9 +230,7 @@ void MarkovianCC::onACK(int ack,
   bool reduce = false;
   if (unacknowledged_packets.count(seq_num) != 0) {
     int tmp_seq_num = -1;
-    auto iter = unacknowledged_packets.begin();
-    while (iter != unacknowledged_packets.end()){
-      auto x = *iter;
+    /*for (auto x : unacknowledged_packets) {
       assert(tmp_seq_num <= x.first);
       tmp_seq_num = x.first;
       if (x.first > seq_num)
@@ -247,7 +245,27 @@ void MarkovianCC::onACK(int ack,
         pkt_lost = true;
         reduce |= reduce_on_loss.update(true, cur_time, rtt_window.get_latest_rtt());
       }
-      iter = unacknowledged_packets.erase(iter);
+      unacknowledged_packets.erase(x.first);
+    }
+  }*/
+  int it_cnt=0,it_tot=unacknowledged_packets.count(seq_num);
+  for (std::map<SeqNum, PacketData>::iterator x=unacknowledged_packets.begin();x!=unacknowledged_packets.end();) {
+	  if(it_cnt>it_tot)break;
+	  assert(tmp_seq_num <= x->first);
+      tmp_seq_num = x->first;
+      if (x->first > seq_num)
+        break;
+      prev_intersend_time = x->second.intersend_time;
+      prev_intersend_time_vel = x->second.intersend_time_vel;
+      prev_rtt = x->second.rtt;
+      prev_rtt_update_time = x->second.sent_time;
+      prev_avg_sending_rate = x->second.prev_avg_sending_rate;
+      if (x->first < seq_num) {
+        ++ num_pkts_lost;
+        pkt_lost = true;
+        reduce |= reduce_on_loss.update(true, cur_time, rtt_window.get_latest_rtt());
+      }
+      unacknowledged_packets.erase(x++);
     }
   }
   if (pkt_lost) {

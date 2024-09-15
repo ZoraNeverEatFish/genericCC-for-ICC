@@ -7,6 +7,7 @@
 #include "kernelTCP.hh"
 #include "markoviancc.hh"
 #include "traffic-generator.hh"
+#include "ICC.hh"
 
 // see configs.hh for details
 double TRAINING_LINK_RATE = 4000000.0/1500.0;
@@ -25,10 +26,12 @@ int main( int argc, char *argv[] ) {
 	string traffic_params = "";
 	// for MarkovianCC
 	string delta_conf = "";
+	// for ICC
+	string lamda_conf="", Bd_conf="", Rc_conf="";
 	// length of packet train for estimating bottleneck bandwidth
 	int train_length = 1;
 
-	enum CCType { REMYCC, TCPCC, KERNELCC, PCC, NASHCC, MARKOVIANCC } cctype = REMYCC;
+	enum CCType { REMYCC, TCPCC, KERNELCC, PCC, NASHCC, MARKOVIANCC, ICC } cctype = REMYCC;
 
 	for ( int i = 1; i < argc; i++ ) {
 		std::string arg( argv[ i ] );
@@ -79,6 +82,12 @@ int main( int argc, char *argv[] ) {
 			traffic_params = arg.substr( 15 );
 		else if (arg.substr( 0, 11) == "delta_conf=")
 			delta_conf = arg.substr( 11 );
+		else if (arg.substr( 0, 8) == "Bd_conf=")
+			Bd_conf = arg.substr( 8 );
+		else if (arg.substr( 0, 8) == "Rc_conf=")
+			Rc_conf = arg.substr( 8 );
+		else if (arg.substr( 0, 11) == "lamda_conf=")
+			lamda_conf = arg.substr( 11 );
 		else if (arg.substr( 0, 13 ) == "train_length=")
 			train_length = atoi(arg.substr( 13 ).c_str());
 		else if( arg.substr( 0, 7 ) == "cctype=" ) {
@@ -95,6 +104,8 @@ int main( int argc, char *argv[] ) {
 				cctype = CCType::NASHCC;
 			else if (cctype_str == "markovian")
 				cctype = CCType::MARKOVIANCC;
+            else if (cctype_str == "icc")
+				cctype = CCType::ICC;
 			else
 				fprintf( stderr, "Unrecognised congestion control protocol '%s'.\n", cctype_str.c_str() );
 		}
@@ -152,6 +163,15 @@ int main( int argc, char *argv[] ) {
 		congctrl.interpret_config_str(delta_conf);
 		CTCP< MarkovianCC > connection( congctrl, serverip, serverport, sourceport, train_length );
 		TrafficGenerator< CTCP< MarkovianCC > > traffic_generator( connection, onduration, offduration, traffic_params );
+		traffic_generator.spawn_senders( 1 );
+	}
+    else if ( cctype == CCType::ICC ){
+		fprintf( stdout, "Using ICC.\n");
+		IntroCC congctrl(1.0);
+		assert(lamda_conf != "");
+		congctrl.interpret_config_str(lamda_conf,Bd_conf,Rc_conf);
+		CTCP< IntroCC > connection( congctrl, serverip, serverport, sourceport, train_length );
+		TrafficGenerator< CTCP< IntroCC > > traffic_generator( connection, onduration, offduration, traffic_params );
 		traffic_generator.spawn_senders( 1 );
 	}
 	else{
