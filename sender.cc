@@ -8,6 +8,7 @@
 #include "markoviancc.hh"
 #include "traffic-generator.hh"
 #include "ICC.hh"
+#include "ICC-G.hh"
 
 // see configs.hh for details
 double TRAINING_LINK_RATE = 4000000.0/1500.0;
@@ -31,7 +32,7 @@ int main( int argc, char *argv[] ) {
 	// length of packet train for estimating bottleneck bandwidth
 	int train_length = 1;
 
-	enum CCType { REMYCC, TCPCC, KERNELCC, PCC, NASHCC, MARKOVIANCC, ICC } cctype = REMYCC;
+	enum CCType { REMYCC, TCPCC, KERNELCC, PCC, NASHCC, MARKOVIANCC, ICC, ICCG } cctype = REMYCC;
 
 	for ( int i = 1; i < argc; i++ ) {
 		std::string arg( argv[ i ] );
@@ -106,6 +107,8 @@ int main( int argc, char *argv[] ) {
 				cctype = CCType::MARKOVIANCC;
             else if (cctype_str == "icc")
 				cctype = CCType::ICC;
+			else if (cctype_str == "iccG")
+				cctype = CCType::ICCG;
 			else
 				fprintf( stderr, "Unrecognised congestion control protocol '%s'.\n", cctype_str.c_str() );
 		}
@@ -172,6 +175,15 @@ int main( int argc, char *argv[] ) {
 		congctrl.interpret_config_str(lamda_conf,Bd_conf,Rc_conf);
 		CTCP< IntroCC > connection( congctrl, serverip, serverport, sourceport, train_length );
 		TrafficGenerator< CTCP< IntroCC > > traffic_generator( connection, onduration, offduration, traffic_params );
+		traffic_generator.spawn_senders( 1 );
+	}
+	else if ( cctype == CCType::ICCG ){
+		fprintf( stdout, "Using ICC-G.\n");
+		IntroCC_G congctrl(1.0);
+		assert(lamda_conf != "");
+		congctrl.interpret_config_str(lamda_conf,Bd_conf,Rc_conf);
+		CTCP< IntroCC_G > connection( congctrl, serverip, serverport, sourceport, train_length );
+		TrafficGenerator< CTCP< IntroCC_G > > traffic_generator( connection, onduration, offduration, traffic_params );
 		traffic_generator.spawn_senders( 1 );
 	}
 	else{
